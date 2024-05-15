@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "627365699764",
+    "project_id": "ingramapp-fb9f4",
+    "storage_bucket": "ingramapp-fb9f4.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:627365699764:android:12dcff2efac1bddcf877e1",
+        "android_client_info": {
+          "package_name": "com.example.ingram"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBP-iDiMsnpHfal5B0zD0Fr28k71iBopFE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

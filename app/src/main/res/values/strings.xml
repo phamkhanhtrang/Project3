@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">Ingram</string>
+    <string name="instagram">Instagram</string>
+    <string name="phonename"> Số điện thoại, tên người dùng</string>
+    <string name="password">Mật khẩu</string>
+    <string name="repassword"> Nhập lại mật khẩu </string>
+    <string name="register"> Đăng ký</string>
+    <string name="noti"> Bạn đã có tài khoản?.Đăng ký</string>
+    <string name="noti2">Bạn chưa có tài khoản.Đăng nhập</string>
+    <string name="login">Đăng nhập</string>
+    <string name="losepass">Quên mật khẩu?</string>
+    <string name="fullname">Tên đầy đủ</string>
+    <string name="username">Tên người dùng</string>
+    <string name="phone">Số di động hoặc email</string>
+    <string name="face">Đăng nhập bằng facebook</string>
+    <string name="text">Đăng ký để xem ảnh và video từ bạn bè</string>
+</resources>
