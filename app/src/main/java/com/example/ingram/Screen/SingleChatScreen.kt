@@ -170,18 +170,21 @@ fun ReplyBox(reply: String, onReplyChange:(String)->Unit, onSendReply:()->Unit){
                     .padding(8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
 
-            ) {
-                TextField(value = reply, onValueChange = onReplyChange, maxLines = 3,
-                    modifier = Modifier.height(50.dp))
-                Button(onClick = onSendReply,
+                ) {
+                TextField(
+                    value = reply, onValueChange = onReplyChange, maxLines = 3,
+                    modifier = Modifier.height(50.dp)
+                )
+                Button(
+                    onClick = onSendReply,
                     modifier = Modifier.height(55.dp)
                         .width(192.dp)
-                        ) {
-                    Text(text = "Gửi",
+                ) {
+                    Text(
+                        text = "Gửi",
                         fontSize = 9.sp,
-                         )
+                    )
                 }
             }
         }
-
 }

@@ -45,6 +45,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -60,16 +61,17 @@ import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.core.graphics.toColorInt
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.rememberImagePainter
-import com.example.ingram.Components.CommentScreen
 import com.example.ingram.Components.FeedIcon
 import com.example.ingram.Components.IconAttractive
+import com.example.ingram.DestinationScreen
 import com.example.ingram.LCViewModel
-import com.example.ingram.Model.Post
 import com.example.ingram.Model.Stories
-import com.example.ingram.Model.User
 import com.example.ingram.R
+import com.example.ingram.data.PostData
+import com.example.ingram.navigateTo
 import com.example.ingram.ui.theme.Bule1
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 
@@ -80,12 +82,11 @@ fun HomeScreen(navController: NavController, vm : LCViewModel) {
             .fillMaxSize()
             .background(color = Color.White),
     ) {
-        Heard(onNotificationClick = { /*TODO*/ }) {
-
-        }
-        LazyColumn {
-            item { StoríseSection(storyList = getStories()) }
-        }
+        Heard(
+            onMessClick={
+                navigateTo(navController,DestinationScreen.ChatList.route)
+            })
+        StorySection(vm = vm, navController =navController )
 
         Divider(
             Modifier
@@ -98,12 +99,9 @@ fun HomeScreen(navController: NavController, vm : LCViewModel) {
     }
 }
 
-
-
 @Composable
 fun Heard(modifier: Modifier = Modifier,
-          onNotificationClick:() ->Unit,
-          onMessCick:()->Unit
+          onMessClick:()->Unit
 ){
     val pacificoFamily = FontFamily(
         Font(R.font.pacifico, FontWeight.Bold)
@@ -130,76 +128,51 @@ fun Heard(modifier: Modifier = Modifier,
                     top.linkTo(parent.top, margin = 10.dp)
                     end.linkTo(parent.end, margin = 15.dp)
                 }) {
-                onMessCick()
-            }
-            IconAttractive(icon = R.drawable.heart,
-                modifier = modifier.constrainAs(iconNoti){
-                    top.linkTo(parent.top, margin = 10.dp)
-                    end.linkTo(iconMess.start, margin = 20.dp)
-                }) {
+                onMessClick()
             }
         }
     }
 }
 
-@Composable
-fun StoríseSection(storyList:List<Stories>, modifier: Modifier = Modifier) {
-    LazyRow {
-        items(storyList){story->
-            StoryItem(modifier = Modifier, story = story)
-        }
-    }
-}
+
+
+
 
 @Composable
-fun StoryItem(modifier: Modifier, story: Stories){
-
-    Column ( modifier = Modifier.padding(5.dp)){
-        Image(
-            painter = painterResource(id = story.profile),
-            contentDescription = "story profile",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(60.dp)
-                .border(
-                    width = 2.dp, brush = Brush.linearGradient(
-                        listOf(
-                            Color("#DE0046".toColorInt()),
-                            Color("#F7A34B".toColorInt()),
-                        )
-                    ),
-                    shape = CircleShape
-                )
-                .padding(5.dp)
-                .clip(CircleShape)
-        )
-
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(text = story.username)
-    }
-
-}
-
-@Composable
-fun PostSection(vm: LCViewModel,){
+fun PostSection(vm: LCViewModel,) {
     val postdata = vm.Post.value
+    var currentPostID by rememberSaveable { mutableStateOf<String?>(null) }
+    val content= LocalContext.current
+    if (postdata.isEmpty()) {
+        Text(text = "Không có bài đăng")
+    } else {
+        currentPostID?.let { postID ->
+            Modalbotom(vm = vm, postID = postID) {
+                currentPostID = null // Reset postID after closing ModalBottom
+            }
+        }
+        LazyColumn {
+            items(postdata) { post ->
+                PostItem(
+                    postID = post.postID,
+                    imageProfile = post.user.imageUrl,
+                    name = post.user.name,
+                    content = post.content,
+                    vm = vm,
+                    imagePostUrl = post.imageUrl,
+                    onCommentClick = { postID -> currentPostID = postID },
+                    onShareClick = {
+                        val shareText=""""
+                            Thông Tin bài viết:${post.content}
+                            
+                            Được viết bởi:${post.content}
+                        """.trimIndent()
+                        vm.shareOrder(content,"chia sẻ" ,post.imageUrl,shareText ) }
+                )
+            }
+        }
+    }
 
-
- if(postdata.isEmpty()){
-     Text(text = "Không có bài đăng")
- }else {
-     LazyColumn {
-         items(postdata) { post ->
-             PostItem(
-                 imageProfile = post.user.imageUrl,
-                 name = post.user.name,
-                 content = post.content,
-                 vm = vm,
-                 imagePostUrl = post.imageUrl
-             )
-         }
-     }
- }
 }
 
 @OptIn( ExperimentalFoundationApi::class)
@@ -208,9 +181,11 @@ fun PostItem(modifier: Modifier = Modifier,
              imagePostUrl:List<String>?,
              imageProfile: String?,
              name:String?,
+             postID: String?,
              content: String?,
              vm:LCViewModel,
-
+             onCommentClick: (String) -> Unit,
+             onShareClick: (String) -> Unit
 
 ){
       val painterProfile = rememberImagePainter(data = imageProfile)
@@ -261,8 +236,13 @@ fun PostItem(modifier: Modifier = Modifier,
         Spacer(modifier = Modifier.height(7.dp))
         PostCarousel( data = imagePostUrl, pagerState = pagerState)
 
-        Modalbotom()
-//        LikeSection(post.likeBy)
+        sideBarview(
+            onLikeClick = { /*TODO*/ },
+            onCommentClick = { onCommentClick(postID.toString()) },
+            onShareClick = { onShareClick(postID.toString())  }
+        ){
+
+        }
         val annotatedString = buildAnnotatedString {
             withStyle(style = SpanStyle(Color.Black, fontWeight = FontWeight.Bold)){
                 append("${name} ")
@@ -276,46 +256,6 @@ fun PostItem(modifier: Modifier = Modifier,
             maxLines = 2,
             modifier = Modifier.padding(horizontal = 20.dp)
         )
-    }
-}
-
-@Composable
-fun LikeSection(likeBy: List<User>) = if (likeBy.size>10){
-    Text(text = "${likeBy.size} like", modifier = Modifier.padding(5.dp),
-        fontWeight = FontWeight.Bold,
-        fontSize = 13.sp)
-}else if(likeBy.size==1){
-    Text(text = "like by ${likeBy.size} like", modifier = Modifier.padding(5.dp),
-        fontWeight = FontWeight.Bold,
-        fontSize = 13.sp,)
-}
-else{
-    Row (verticalAlignment = Alignment.CenterVertically){
-        PostLikeViewProfile(likeBy)
-        Spacer(modifier = Modifier.width(2.dp))
-        Text(text = "like by ${likeBy[0].userName} and ${likeBy.size-1} other", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-
-    }
-}
-
-@Composable
-fun PostLikeViewProfile(likeBy: List<User>) {
-    LazyRow (horizontalArrangement = Arrangement.spacedBy((-10).dp),
-        modifier = Modifier.padding(horizontal = 20.dp)){
-        items(likeBy.take(4)){likeBy->
-            Image(painter = painterResource(id = likeBy.profile),
-                contentDescription = "story profile",
-                modifier = Modifier
-                    .size(24.dp)
-                    .border(
-                        width = 2.dp,
-                        color = Color.White,
-                        shape = CircleShape
-                    )
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
-            )
-        }
     }
 }
 
@@ -405,47 +345,28 @@ fun sideBarview(
                 start.linkTo(iconComment.end, margin = 20.dp)
                 top.linkTo(parent.top)
             } ) {
-            onShareClick()
+            onShareClick( )
         }
     }
 
 }
 
-fun getStories():List<Stories> = listOf(
-    Stories(username = " d jsbsdhbs", profile = R.drawable.avata2),
-    Stories(username = " d jsbsdhbs", profile = R.drawable.avata1),
-    Stories(username = " d jsbsdhbs", profile = R.drawable.avata4),
-    Stories(username = " d jsbsdhbs", profile = R.drawable.avata3),
-
-    )
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Modalbotom(){
+fun Modalbotom(vm: LCViewModel, postID: String, onDismiss: () -> Unit) {
     val sheetState = rememberModalBottomSheetState()
-    var isSheetOpen by rememberSaveable {
-        mutableStateOf(false)
-    }
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ){
+    var isSheetOpen by rememberSaveable { mutableStateOf(true) }
 
-        sideBarview(
-            onLikeClick = { /*TODO*/ },
-            onCommentClick = {  isSheetOpen =true   },
-            onShareClick = { /*TODO*/ }) {
-        }
-    }
-
-    if(isSheetOpen) {
+    if (isSheetOpen) {
         ModalBottomSheet(
             sheetState = sheetState,
             onDismissRequest = {
                 isSheetOpen = false
+                onDismiss()
             },
-            modifier = Modifier.fillMaxSize()) {
-            CommentScreen()
+            modifier = Modifier.fillMaxSize()
+        ) {
+            CommentScreen(vm = vm, postID = postID)
         }
     }
 }

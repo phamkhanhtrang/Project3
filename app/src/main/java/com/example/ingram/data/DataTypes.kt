@@ -40,7 +40,12 @@ data class PostData(
     val imageUrl: List<String>? = null
 )
 data class Comment(
-    val userID :String?="",
-    val name: String?="",
+    val username : String?="",
     val imageUrl: String?="",
+    val comment: String?="",
+    val timestamp: String?=""
+)
+data class StoryData(val user: ChatUser = ChatUser(),
+    val imageUrl: String?= "",
+    val timestamp: Long?=null
 )

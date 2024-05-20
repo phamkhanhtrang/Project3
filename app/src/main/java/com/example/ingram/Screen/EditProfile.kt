@@ -72,7 +72,7 @@ fun EditProfile(vm:LCViewModel, navController: NavController ){
            ProfileImage(imageUrl = imageUrl, vm =vm )
             ProfileContent(
                 onBack = {
-                    navigateTo(navController, DestinationScreen.Profile.route)
+                   navController.popBackStack()
                          },
                 onSave = {
                     vm.createOrUpdateProfile(

@@ -4,9 +4,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material.icons.filled.Person
@@ -38,6 +42,7 @@ import com.example.ingram.Screen.ProfileScreen
 import com.example.ingram.Screen.SearchScreen
 import com.example.ingram.Screen.SignUpScreen
 import com.example.ingram.Screen.SingleChatScreen
+import com.example.ingram.Screen.SingleStoryScreen
 import com.example.ingram.ui.theme.IngramTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -53,9 +58,11 @@ sealed class DestinationScreen(var route : String){
     }
     object EditProfle: DestinationScreen("edit ")
     object PostContent: DestinationScreen("post ")
-//    object fr : DestinationScreen("editprofle/{userID}"){
-//        fun createRoute(userID: String? = null ) = "edit/$userID"
-//    }
+    object StatusList: DestinationScreen("StatusList")
+    object SingleStory: DestinationScreen("singleStory/{userID}"){
+        fun createRoute(userId: String ) = "singleStatus/$userId"
+    }
+
 }
 
 @AndroidEntryPoint
@@ -82,12 +89,10 @@ class MainActivity : ComponentActivity() {
             mutableStateOf(Icons.Default.Home)
         }
         var showBottomBar by remember { mutableStateOf(true) }
-
-
-        Scaffold (
+            Scaffold (
             bottomBar = {
                 if (showBottomBar) {
-                    BottomAppBar {
+                    BottomAppBar(modifier = Modifier.width(500.dp).height(50.dp)) {
                         IconButton(
                             onClick = {
                                 selected.value = Icons.Default.Home
@@ -107,18 +112,18 @@ class MainActivity : ComponentActivity() {
 
                         IconButton(
                             onClick = {
-                                selected.value = Icons.Default.Search
-                                navControler.navigate(DestinationScreen.Search.route) {
+                                selected.value = Icons.Default.Add
+                                navControler.navigate(DestinationScreen.PostContent.route) {
                                     popUpTo(0)
                                 }
                             },
                             modifier = Modifier.weight(1f)
                         ) {
                             Icon(
-                                Icons.Default.Search,
+                                Icons.Default.Add,
                                 contentDescription = null,
                                 modifier = Modifier.size(26.dp),
-                                tint = if (selected.value == Icons.Default.Search) Color.White else Color.Gray
+                                tint = if (selected.value == Icons.Default.Add) Color.White else Color.Gray
                             )
                         }
 
@@ -154,6 +159,7 @@ class MainActivity : ComponentActivity() {
                                 tint = if (selected.value == Icons.Default.Person) Color.White else Color.Gray
                             )
                         }
+
                     }
                 }
             }
@@ -181,11 +187,7 @@ class MainActivity : ComponentActivity() {
                         SingleChatScreen(navController = navControler, vm = vm, chatId = chatID)
                     }
                 }
-                composable(DestinationScreen.Search.route){
-                    showBottomBar = true
-                    SearchScreen( navController =navControler , vm = vm)
-                }
-                composable(DestinationScreen.Profile.route){
+                 composable(DestinationScreen.Profile.route){
                     showBottomBar = true
                     ProfileScreen( navController =navControler , vm = vm)
                 }
@@ -196,6 +198,13 @@ class MainActivity : ComponentActivity() {
                 composable(DestinationScreen.PostContent.route){
                     showBottomBar = false
                     PostScreen( navController =navControler , vm = vm)
+                }
+                composable(DestinationScreen.SingleStory.route){
+                    val userId = it.arguments?.getString("userId")
+                    userId?.let {
+                        showBottomBar = false
+                        SingleStoryScreen(navController = navControler, vm = vm, userId = userId )
+                    }
                 }
             }
         }

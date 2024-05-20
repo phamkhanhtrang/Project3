@@ -79,18 +79,22 @@ fun ProfileScreen( navController: NavController, vm : LCViewModel) {
         CommonProgressBar()
     }else {
         val userData = vm.userData.value
-        var name by rememberSaveable {
+        val name by rememberSaveable {
             mutableStateOf(userData?.name ?: "")
         }
+
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             topBar = {
-                Text(
-                    text = name,
-                    modifier = Modifier.padding(start = 20.dp, bottom = 6.dp, top = 20.dp),
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Row {
+                    Text(
+                        text = name,
+                        modifier = Modifier.padding(start = 20.dp, bottom = 6.dp, top = 20.dp),
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                }
             },
             content = { contentPadding ->
                 MainContent(
@@ -105,18 +109,7 @@ fun ProfileScreen( navController: NavController, vm : LCViewModel) {
 
 @Composable
 fun MainContent(modifier: Modifier, vm : LCViewModel, navController: NavController) {
-    val inProcess = vm.inProcess.value
-    if (inProcess){
-        CommonProgressBar()
-    }else{
-//        val userData = vm.userData.value
-//        var name by rememberSaveable {
-//            mutableStateOf(userData?.name?:"")
-//        }
-//        var number by rememberSaveable {
-//            mutableStateOf(userData?.name?:"")
-//        }
-    }
+
     var selectedTabIndex by remember {
         mutableIntStateOf(0)
     }
@@ -128,6 +121,9 @@ fun MainContent(modifier: Modifier, vm : LCViewModel, navController: NavControll
         })
         when (selectedTabIndex) {
             0 -> PostsSection()
+        }
+        when (selectedTabIndex) {
+            1 -> PostsSection()
         }
     }
 }
@@ -190,7 +186,6 @@ fun PostsTabView(
             )
         }
     }
-
 }
 
 @Composable
@@ -220,39 +215,38 @@ fun ProfileSection(modifier: Modifier = Modifier,  vm: LCViewModel, navControlle
             name = textname.toString(),
             activityLabel = textphone.toString(),
             description = textnote.toString()
-
         )
 
-        UpdateAndPost(navController = navController)
+        UpdateAndPost(navController = navController, vm )
 
         Spacer(modifier = Modifier.height(20.dp))
     }
 }
 
 @Composable
-fun UpdateAndPost(navController: NavController ){
-//    val navController = rememberNavController()
-    Row {
-        Button(onClick = {
-            navigateTo(navController, DestinationScreen.EditProfle.route)
-        }) {
-            Row {
-                Text(text = "Chỉnh sửa thông tin")
-                Icon(Icons.Default.Person, contentDescription =null )
-            }
+fun UpdateAndPost(navController: NavController ,vm: LCViewModel) {
+     val inProcess = vm.inProcess.value
+    if (inProcess) {
+        CommonProgressBar()
+    } else {
+        Row {
+            Button(onClick = {
+                navigateTo(navController, DestinationScreen.EditProfle.route)
+            }) {
+                Row {
+                    Text(text = "Chỉnh sửa thông tin")
+                    Icon(Icons.Default.Person, contentDescription = null)
+                }
 
-        }
-        Button(onClick = { navigateTo(navController, DestinationScreen.PostContent.route) }) {
-            Row {
-                Text(text = "Đăng bài")
-                Icon(Icons.Default.AddCircle, contentDescription = null)
             }
-
+            Text(text = "Đăng xuất", modifier = Modifier.clickable {
+                vm.logout()
+                navigateTo(navController,DestinationScreen.Login.route)
+            })
         }
     }
+
 }
-
-
 
 @Composable
 fun BioSection(
@@ -289,11 +283,7 @@ fun BioSection(
             letterSpacing = letterSpacing,
             lineHeight = lineHeight
         )
-
-
-
     }
-
 }
 
 @Composable

@@ -4,15 +4,19 @@ import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.ContentValues.TAG
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.text.isDigitsOnly
 import androidx.lifecycle.ViewModel
 import com.example.ingram.data.CHATS
+import com.example.ingram.data.COMMENT
 import com.example.ingram.data.ChatData
 import com.example.ingram.data.ChatUser
+import com.example.ingram.data.Comment
 import com.example.ingram.data.Event
 import com.example.ingram.data.MESSAGE
 import com.example.ingram.data.Message
@@ -33,6 +37,14 @@ import java.lang.Exception
 import java.util.Calendar
 import java.util.UUID
 import javax.inject.Inject
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
+import com.bumptech.glide.Glide
+import com.example.ingram.data.STORY
+import com.example.ingram.data.StoryData
+import java.io.File
+
 
 @HiltViewModel
 class LCViewModel @Inject constructor(
@@ -45,7 +57,11 @@ class LCViewModel @Inject constructor(
     var signIn = mutableStateOf(false)
     val userData = mutableStateOf<UseData?>(null)
 
+    val inProcessPost = mutableStateOf(false)
     val Post = mutableStateOf<List<PostData>>(listOf())
+    val inProcessComment  = mutableStateOf(false)
+    var currentCommentListen : ListenerRegistration?=null
+    val comment  = mutableStateOf<List<Comment>>(listOf())
 
     var inProcessChats = mutableStateOf(false)
     val chats = mutableStateOf<List<ChatData>>(listOf())
@@ -53,6 +69,9 @@ class LCViewModel @Inject constructor(
     val chatMessage = mutableStateOf<List<Message>>(listOf())
     val inProcessChatMessage = mutableStateOf(false)
     var currentChatMessageListen: ListenerRegistration? = null
+
+    val storys= mutableStateOf<List<StoryData>>(listOf())
+    val inProgressStory = mutableStateOf(false)
 
     init {
         val currentUser = auth.currentUser
@@ -70,6 +89,19 @@ class LCViewModel @Inject constructor(
         val message = if (customMessage.isNotEmpty()) errorMsg else customMessage
         eventMutableState.value = Event(message)
         inProcess.value = false
+    }
+
+    fun onSendComment(postID:String, comment: String ){
+        val time = Calendar.getInstance().time.toString()
+        val msg = Comment(userData.value?.name,userData.value?.imageUrl, comment, time)
+        db.collection(POST).document(postID).collection(COMMENT).document().set(msg)
+    }
+
+    fun onSendReply(chatID: String, message: String) {
+        val time = Calendar.getInstance().time.toString()
+        val msg = Message(userData.value?.userId, message, time)
+        db.collection(CHATS).document(chatID).collection(MESSAGE).document().set(msg)
+
     }
 
     fun signUp(name: String, number: String, email: String, password: String) {
@@ -119,7 +151,12 @@ class LCViewModel @Inject constructor(
                 }
         }
     }
-
+    fun logout(){
+        auth.signOut()
+        signIn.value=false
+        userData.value=null
+        eventMutableState.value=Event("Logged Out")
+    }
 
     fun upLoadImage(uri: Uri, context: Context, type: String, onSuccess: (String) -> Unit) {
 
@@ -143,10 +180,9 @@ class LCViewModel @Inject constructor(
             }.addOnSuccessListener { _ ->
                 Toast.makeText(
                     context,
-                    "Upload succeeded",
+                    "Đăng ảnh thành cônng",
                     Toast.LENGTH_SHORT
                 ).show()
-                inProcess.value=true
                 spaceRef.downloadUrl.addOnSuccessListener { imageUrl ->
                     // Gọi hàm gọi lại onSuccess với đường dẫn của ảnh
                     onSuccess(imageUrl.toString())
@@ -213,6 +249,7 @@ class LCViewModel @Inject constructor(
     }
 
 
+
     private fun getUserData(uid: String) {
         inProcess.value = true
         db.collection(USER_NODE).document(uid).addSnapshotListener { value, error ->
@@ -220,11 +257,12 @@ class LCViewModel @Inject constructor(
                 handleException(error, " Con not retreive User")
             }
             if (value != null) {
-                var user = value.toObject<UseData>()
+                val user = value.toObject<UseData>()
                 userData.value = user
                 inProcess.value = false
                 populateChats()
-//                populateStatuses()
+                populatePost()
+                populateStory()
             }
         }
     }
@@ -281,12 +319,6 @@ class LCViewModel @Inject constructor(
         }
     }
 
-    fun onSendReply(chatID: String, message: String) {
-        val time = Calendar.getInstance().time.toString()
-        val msg = Message(userData.value?.userId, message, time)
-        db.collection(CHATS).document(chatID).collection(MESSAGE).document().set(msg)
-
-    }
 
     fun populateMessages(chatId: String) {
         inProcessChatMessage.value = true
@@ -332,16 +364,30 @@ class LCViewModel @Inject constructor(
             }
         }
     }
+    fun populatePost(){
+        inProcessPost.value=true
+        db.collection(POST).addSnapshotListener{
+                value, error ->
+            if(error!=null){
+                handleException(error)
+            }
+            if (value!=null){
+                Post.value= value.documents.mapNotNull {
+                    it.toObject<PostData>()
+                }
+                inProcessChats.value= false
+            }
+        }
+    }
+
     fun createPost(
         imageUrl: List<String>? = null,
         content: String? = null,
-        context: Context,
-
     ) {
-        val id = db.collection(CHATS).document().id
+        val id = db.collection(POST).document().id
         val newPost = PostData(
             postID = id,
-            ChatUser(
+            user = ChatUser(
                 userData.value?.userId,
                 userData.value?.name,
                 userData.value?.imageUrl,
@@ -350,36 +396,135 @@ class LCViewModel @Inject constructor(
             imageUrl = imageUrl,
             content = content
         )
-        db.collection(POST).document().set(newPost)
-            .addOnSuccessListener {
-                // Khi thêm bài viết thành công, bạn cần truy vấn dữ liệu mới từ Firestore và gán cho Post.value
-                db.collection(POST).get()
-                    .addOnSuccessListener { documents ->
-                        val postList = mutableListOf<PostData>()
-                        for (document in documents) {
-                            val postData = document.toObject(PostData::class.java)
-                            postList.add(postData)
-                        }
-                        // Gán giá trị mới cho Post.value
-                        Post.value = documents.toObjects()
-                    }
-                    .addOnFailureListener { exception ->
-                        Log.w(TAG, "Error getting documents: ", exception)
-                    }
+        db.collection(POST).document(id).set(newPost)
+            .addOnFailureListener { exception ->
+                Log.e(TAG, "Error adding document", exception)
+            }
 
-                Toast.makeText(
-                    context, "Đăng bài viết thành công ",
-                    Toast.LENGTH_SHORT
-                ).show()
+        db.collection(POST).addSnapshotListener { snapshots, exception ->
+            if (exception != null) {
+                Log.e(TAG, "Listen failed: ", exception)
+                return@addSnapshotListener
             }
-            .addOnFailureListener {
-                Toast.makeText(
-                    context, "Thất bại  ",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
+            val postList = snapshots?.map { it.toObject(PostData::class.java) } ?: emptyList()
+            Post.value = postList
+        }
     }
 
+
+    fun populateComment(postId: String){
+        inProcessComment.value=true
+        currentCommentListen = db.collection(POST).document(postId).collection(COMMENT).addSnapshotListener{ value, error->
+            if(error!=null){
+                handleException(error)
+            }
+            if (value!=null){
+                comment.value=value.documents.mapNotNull {
+                    it.toObject<Comment>()
+                }.sortedBy {
+                    it.timestamp
+                }
+                inProcessComment.value=false
+            }
+        }
+    }
+
+    fun uploadStory(uri: Uri,context: Context) {
+        upLoadImage(uri, context = context, type = "image"){
+        createStory(it.toString())
+        }
+    }
+
+    fun createStory(imageUrl: String) {
+        val userId = userData.value?.userId
+        if (userId != null) {
+            val user = ChatUser(
+                userId,
+                userData.value?.name,
+                userData.value?.imageUrl,
+                userData.value?.number,
+            )
+            val newStory = StoryData(
+                user,
+                imageUrl,
+                System.currentTimeMillis()
+            )
+            val storyRef = db.collection(STORY).document()
+            db.runTransaction { transaction ->
+                transaction.set(storyRef, newStory)
+            }.addOnSuccessListener {
+                Log.d(TAG, "Story created successfully")
+            }.addOnFailureListener { e ->
+                Log.w(TAG, "Error creating story", e)
+            }
+        } else {
+            Log.e(TAG, "User data is null")
+        }
+    }
+
+    fun populateStory(){
+        val timeDelta = 24L *60 *60 *1000
+        val cutOff = System.currentTimeMillis()- timeDelta
+        inProgressStory.value = true
+        db.collection(CHATS).where(
+            Filter.or(
+                Filter.equalTo("user1.userId", userData.value?.userId),
+                Filter.equalTo("user2.userId", userData.value?.userId),
+            )
+        ).addSnapshotListener{
+                value, error->
+            if(error!=null)
+                handleException(error)
+            if (value!=null){
+                val currentConnections = arrayListOf(userData.value?.userId)
+                val chats = value.toObjects<ChatData>()
+                chats.forEach{chat ->
+                    if(chat.user1.userId == userData.value?.userId){
+                        currentConnections.add(chat.user2.userId)
+                    }else
+                        currentConnections.add(chat.user1.userId)
+                }
+                db.collection(STORY).whereGreaterThan("timestamp", cutOff).whereIn("user.userId",currentConnections)
+                    .addSnapshotListener{  value, error ->
+                    if(error!=null){
+                        handleException(error)
+                    }
+                    if (value!=null){
+                        storys.value= value.toObjects ()
+                        inProgressStory.value= false
+                    }
+                }
+            }
+        }
+    }
+    fun getUriFromUrl(context: Context, url: String): Uri? {
+        return try {
+            val file = Glide.with(context)
+                .asFile()
+                .load(url)
+                .submit(Target.SIZE_ORIGINAL, Target.SIZE_ORIGINAL)
+                .get()
+
+            FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+    fun shareOrder(context: Context,subject: String? = null, imageUrls: List<String>? = null, text: String? = null) {
+        val uris = imageUrls?.mapNotNull { getUriFromUrl(context, it) }
+          val intent = Intent(Intent.ACTION_SEND).apply {
+              type = "image/*"
+              putExtra(Intent.EXTRA_SUBJECT, subject)
+              putExtra(Intent.EXTRA_TEXT, text)
+              putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
+
+          }
+          context.startActivity(
+              Intent.createChooser(
+                  intent,
+                  context.getString(R.string.instagram)
+              )
+          )
+    }
 }
-
-

@@ -3,7 +3,11 @@ package com.example.ingram
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -61,7 +65,7 @@ fun CheckSignedIn(vm: LCViewModel, navController: NavController){
 fun TitleText(txt:String){
     Text(
         text = txt,
-        fontSize = 35.sp,
+        fontSize = 30.sp,
         fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(8.dp)
     )
@@ -81,6 +85,25 @@ fun CommonRow(imageUrl : String? , name: String?, onItemClick:() ->Unit){
         )
         Text(text = name ?: "-----",
             fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 4.dp)
+        )
+    }
+}
+@Composable
+fun ImageStory(imageUrl : String? , name: String?, onItemClick:() ->Unit){
+    Column ( modifier = Modifier.padding(5.dp)
+        .clickable { onItemClick.invoke() }
+    )
+     {
+        CommonImage(data = imageUrl, modifier = Modifier
+            .padding(8.dp)
+            .size(70.dp)
+            .clip(CircleShape)
+            .background(Color.Gray)
+        )
+        Text(text = name ?: "",
+            modifier = Modifier.padding(start = 15.dp),
+            fontSize = 13.sp
+
         )
     }
 }
